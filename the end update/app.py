@@ -12,11 +12,13 @@ app = Flask(__name__)
 file_path_backend = './data/Sorted_Ngành_Nghề.xlsx'  # Backend data Excel file
 file_path_frontend = './data/Book1.xlsx'  # Frontend data Excel file
 file_path_family = './data/FamilyFactor.xlsx'
+file_path_university = './data/Truong_theo_nganh.xlsx'
 
 # Load datasets
 data_backend = pd.read_excel(file_path_backend)
 data_frontend = pd.read_excel(file_path_frontend)
 family_data = pd.read_excel(file_path_family)
+university_data = pd.read_excel(file_path_university)
 # Function to clean and process bracketed columns
 def clean_brackets(column):
     cleaned_data = []
