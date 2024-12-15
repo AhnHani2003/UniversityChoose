@@ -53,149 +53,80 @@ data_backend['Combined'] = (
 tfidf_vectorizer = TfidfVectorizer()
 tfidf_matrix = tfidf_vectorizer.fit_transform(data_backend['Combined'])
 
+
 @app.route('/submit', methods=['POST'])
 def submit():
-    # Kiểm tra header Content-Type
     if request.content_type != 'application/json':
         return jsonify({"error": "Invalid content type"}), 415
-    # Lấy dữ liệu từ frontend (form HTML)
-    data = request.get_json()
 
-    # Dữ liệu từ form
+    data = request.get_json()
     family_advice = data.get('family_advice', '')
     family_industry_select = data.get('family_industry_select', '')
     family_industry = data.get('family_industry', '')
     financial_influence = data.get('financial_influence', '')
-    
-    # Lấy dữ liệu từ các lựa chọn khác (MBTI, tổ hợp môn, khả năng, sở thích)
+
     mbti = data.get('mbti', '').strip().upper()
-    subjects = data.get('subjects', [])
-    subjects = [subject.strip().upper() for subject in subjects]
+    subjects = [subject.strip().upper() for subject in data.get('subjects', [])]
     mainstrengths = set(data.get('mainstrengths', []))
     strengths = set(data.get('strengths', []))
     maininterests = set(data.get('maininterests', []))
     interests = set(data.get('interests', []))
 
-    # Vectorize user inputs
     mainstrengths_vector = tfidf_vectorizer.transform([" ".join(mainstrengths)]) if mainstrengths else None
     strengths_vector = tfidf_vectorizer.transform([" ".join(strengths)]) if strengths else None
     maininterests_vector = tfidf_vectorizer.transform([" ".join(maininterests)]) if maininterests else None
     interests_vector = tfidf_vectorizer.transform([" ".join(interests)]) if interests else None
 
-    # Load family factor data to check if a career matches with family industry
-    # We are using the 'Top học phí' column to get high tuition careers
     high_tuition_careers = family_data['Top học phí'].dropna().unique()
     top_social_careers = family_data['Top nghề nghiệp'].dropna().unique()
 
     suggestions = []
     for i in range(len(data_backend)):
         row = data_backend.iloc[i]
+        backend_mbtis = {mbti.strip() for mbti in str(row['MBTI']).split(',')}
+        mbti_score = 1.0 if mbti in backend_mbtis else 0.0
 
-        # MBTI - kiểm tra nếu bất kỳ giá trị nào khớp
-        backend_mbtis = {mbti.strip() for mbti in str(row['MBTI']).replace('\t', '').split(',')}
-        if mbti in backend_mbtis:
-            mbti_score = 1.0
-        else:
-            mbti_score = 0.0
+        backend_subjects = {subject.strip() for subject in str(row['Tổ hợp môn']).split(',')}
+        subjects_score = 1.0 if any(subject in backend_subjects for subject in subjects) else 0.0
 
-        # Tổ hợp môn - kiểm tra nếu bất kỳ giá trị nào khớp
-        backend_subjects = {subject.strip() for subject in str(row['Tổ hợp môn']).replace('\t', '').split(',')}
-        if any(subject in backend_subjects for subject in subjects):
-            subjects_score = 1.0
-        else:
-            subjects_score = 0.0
-
-        # MAIN STRENGTHS và phần còn lại của Khả năng và Điểm mạnh
-        if row['MAIN STRENGTHS']:
-            main_strengths_score = cosine_similarity(
-                mainstrengths_vector,
-                tfidf_vectorizer.transform([row['MAIN STRENGTHS']])
-            ).flatten()[0] if mainstrengths_vector is not None else 0
-        else:
-            main_strengths_score = 0
-
-        if row['Khả năng và Điểm mạnh']:
-            remaining_strengths_score = cosine_similarity(
-                strengths_vector,
-                tfidf_vectorizer.transform([row['Khả năng và Điểm mạnh']])
-            ).flatten()[0] if strengths_vector is not None else 0
-        else:
-            remaining_strengths_score = 0
-
-        # Tổng điểm cho Khả năng và Điểm mạnh
+        main_strengths_score = cosine_similarity(mainstrengths_vector, tfidf_vectorizer.transform([row['MAIN STRENGTHS']])).flatten()[0] if mainstrengths_vector is not None else 0
+        remaining_strengths_score = cosine_similarity(strengths_vector, tfidf_vectorizer.transform([row['Khả năng và Điểm mạnh']])).flatten()[0] if strengths_vector is not None else 0
         strengths_score = main_strengths_score * 0.35 + remaining_strengths_score * 0.65
 
-        # MAIN INTERESTEDS và phần còn lại của Sở thích và Đam mê
-        if row['MAIN INTERESTEDS']:
-            main_interests_score = cosine_similarity(
-                maininterests_vector,
-                tfidf_vectorizer.transform([row['MAIN INTERESTEDS']])
-            ).flatten()[0] if maininterests_vector is not None else 0
-        else:
-            main_interests_score = 0
-
-        if row['Sở thích và Đam mê']:
-            remaining_interests_score = cosine_similarity(
-                interests_vector,
-                tfidf_vectorizer.transform([row['Sở thích và Đam mê']])
-            ).flatten()[0] if interests_vector is not None else 0
-        else:
-            remaining_interests_score = 0
-
-        # Tổng điểm cho Sở thích và Đam mê
+        main_interests_score = cosine_similarity(maininterests_vector, tfidf_vectorizer.transform([row['MAIN INTERESTEDS']])).flatten()[0] if maininterests_vector is not None else 0
+        remaining_interests_score = cosine_similarity(interests_vector, tfidf_vectorizer.transform([row['Sở thích và Đam mê']])).flatten()[0] if interests_vector is not None else 0
         interests_score = main_interests_score * 0.35 + remaining_interests_score * 0.65
 
-
-        # Tính điểm trung bình với trọng số
-        PF_score = (
-            mbti_score * 0.2391 +
-            subjects_score * 0.2457 +
-            strengths_score * 0.2609 +
-            interests_score * 0.2543
-        )
-
-        # Tính family_score dựa trên family_advice và family_industry_select
+        PF_score = mbti_score * 0.2391 + subjects_score * 0.2457 + strengths_score * 0.2609 + interests_score * 0.2543
         family_score = 0.5456
-        
-        # Bước 1: Kiểm tra lĩnh vực tương ứng với family_industry_select
-        relevant_industries = data_backend[data_backend['Lĩnh vực'].str.contains(family_industry_select, case=False, na=False)]
-
-        # Bước 2: Lọc danh sách các ngành thuộc lĩnh vực
-        relevant_careers = set(relevant_industries['Ngành'])
-
-        # Bước 3: Dựa trên family_advice, cộng điểm cho các ngành phù hợp
-        if family_industry == 'Có' and family_advice == "Có":
-            if row['Ngành'] in relevant_careers:
-                family_score += 0.4544  # Cộng 0.4544 điểm nếu ngành thuộc lĩnh vực gia đình làm
-        elif family_industry == 'Có' and family_advice == "Có, nhưng không nhiều":
-            if row['Ngành'] in relevant_careers:
-                family_score += 0.25  # Cộng 0.25 điểm nếu ngành thuộc lĩnh vực gia đình làm
-        # Các trường hợp khác không thay đổi family_score
-
-
-        # Kiểm tra financial_influence để trừ điểm cho các ngành có học phí cao
         financial_influence_score = 1 if financial_influence == "Có" else 0
 
-        if financial_influence_score == 1:
-            # Nếu ngành học thuộc "Top học phí", trừ 0.5456 điểm từ family_score
-            if row['Ngành'] in high_tuition_careers:
-                family_score -= 0.5456  # Trừ điểm cho ngành có học phí cao
+        if financial_influence_score == 1 and row['Ngành'] in high_tuition_careers:
+            family_score -= 0.5456
 
-        # Tính Social Factor (SF)
-        social_factor_score = 0  # Khởi tạo SF bằng 0
-          # Danh sách nghề nghiệp trong "Top nghề nghiệp"
-        if row['Ngành'] in top_social_careers:
-            social_factor_score += 1  # Cộng 1 điểm nếu ngành thuộc "Top nghề nghiệp"
+        social_factor_score = 1 if row['Ngành'] in top_social_careers else 0
+        final_score = PF_score * 0.5702 + family_score * 0.2936 + social_factor_score * 0.1362
 
-        # Tính final_score (PF_score + family_score)
-        final_score = PF_score * 0.5702 + family_score * 0.2936 + social_factor_score * 0.1362  # Kết hợp PF_score và family_score và social_factor_score
-
-        # Lưu kết quả ngành nghề và final_score
         suggestions.append((row['Ngành'], final_score))
 
-    # Sắp xếp và lấy top 10 gợi ý
+    # Fetch top 10 suggested careers
     suggestions = sorted(suggestions, key=lambda x: x[1], reverse=True)[:10]
-    return jsonify([{"career": s[0], "score": f"{s[1]*100:.2f}%"} for s in suggestions]), 200
+
+    # Match careers with universities and colleges
+    final_output = []
+    for career, score in suggestions:
+        matched_universities = university_data[university_data['Ngành'] == career]['Top trường đại học'].dropna().tolist()
+        matched_colleges = university_data[university_data['Ngành'] == career]['Top trường Trường cao đẳng'].dropna().tolist()
+
+        final_output.append({
+            "career": career,
+            "score": f"{score * 100:.2f}%",
+            "universities": matched_universities,
+            "colleges": matched_colleges
+        })
+
+    return jsonify(final_output), 200
+
 
 
 @app.route('/')
