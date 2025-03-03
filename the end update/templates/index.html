@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gợi ý ngành nghề</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>Gợi ý ngành nghề phù hợp</h1>
+        <form id="careerForm">
+            <!-- Câu hỏi 1 -->
+            <div class="form-group" style="border: 2px solid #000; padding: 20px; background-color: #f0f0f0;">
+                <label for="family_advice">Bạn có nhận được sự tư vấn của gia đình không?</label>
+                <div>
+                    <button type="button" onclick="setAnswer('family_advice', 'Có', this)">Có</button>
+                    <button type="button" onclick="setAnswer('family_advice', 'Có, nhưng không nhiều', this)">Có, nhưng không nhiều</button>
+                    <button type="button" onclick="setAnswer('family_advice', 'Không', this)">Không</button>
+                </div>
+                <input type="hidden" name="family_advice" id="family_advice">
+            </div>
+
+            <!-- Câu hỏi 2 -->
+            <div class="form-group" style="border: 2px solid #000; padding: 20px; background-color: #f0f0f0;">
+                <label for="financial_influence">Tài chính có ảnh hưởng đến vấn đề chọn ngành chọn trường của bạn không?</label>
+                <div>
+                    <button type="button" onclick="setAnswer('financial_influence', 'Có', this)">Có</button>
+                    <button type="button" onclick="setAnswer('financial_influence', 'Không', this)">Không</button>
+                </div>
+                <input type="hidden" name="financial_influence" id="financial_influence">
+            </div>
+
+            <!-- Câu hỏi 3 -->
+            <div class="form-group" style="border: 2px solid #000; padding: 20px; background-color: #f0f0f0;">
+                <label for="family_industry">Gia đình của bạn có đang làm trong lĩnh vực nào không?</label>
+                <div>
+                    <button type="button" onclick="toggleFields('yes', 'family_industry', this)">Có</button>
+                    <button type="button" onclick="toggleFields('no', 'family_industry', this)">Không</button>
+                </div>
+                <input type="hidden" name="family_industry" id="family_industry">
+            </div>
+
+            <!-- Lĩnh vực gia đình -->
+            <div id="fields-container_3" class="form-group" style="display: none;">
+                <label for="family_industry_select">Chọn lĩnh vực</label>
+                <select class="form-control" id="family_industry_select" name="family_industry_select">
+                    {% for field in fields %}
+                        <option value="{{ field }}">{{ field }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- ComboBox MBTI -->
+            <h3>MBTI</h3>
+            <label style="font-size: 14px;">
+                Nếu bạn không biết tổ hợp MBTI của bạn thì hãy làm thử bài kiểm tra MBTI trên các website khác
+            </label>
+            <br>
+            <select id="mbti" required style="font-size: 16px;">
+                <option value="" disabled selected>Chọn MBTI</option>
+                {% for option in mbti_options %}
+                    <option value="{{ option }}">{{ option }}</option>
+                {% endfor %}
+            </select>
+
+            <!-- Checkbox Tổ hợp môn -->
+            
+            <!-- Checkbox Tổ hợp môn A -->
+            <h3 id="subject-combinations-header">Tổ hợp môn</h3>
+            
+            <div style="border: 2px solid #000; padding: 20px; background-color: #f0f0f0;">
+                <div class="menu-tree" style="display: flex; flex-wrap: wrap; gap: 20px;">
+                    <div class="label-item multiple custom-cursor-on-hover" style="flex: 1; min-width: 200px;">
+                        <label style="font-weight: bold; color: #0e1212; border: 3px solid #000; padding: 10px;">
+                            Tổ hợp môn A
+                        </label>
+                        <ul class="submenu" style="display: none; border: 5px solid #000; padding: 10px; background-color: #e0f7fa;">
+                            {% for option in subject_combination_options if option.startswith('A') %}
+                                <input type="checkbox" id="subject-{{ loop.index }}" name="subjects" value="{{ option }}">
+                                {{ option }}
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    <div class="label-item multiple custom-cursor-on-hover" style="flex: 1; min-width: 200px;">
+                        <label style="font-weight: bold; color: #0e1212; border: 3px solid #000; padding: 10px;">
+                            Tổ hợp môn B
+                        </label>
+                        <ul class="submenu" style="display: none; border: 5px solid #000; padding: 10px; background-color: #e0f7fa;">
+                            {% for option in subject_combination_options if option.startswith('B') %}
+                                <label>
+                                    <input type="checkbox" id="subject-{{ loop.index }}" name="subjects" value="{{ option }}">
+                                    {{ option }}
+                                </label>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    <div class="label-item multiple custom-cursor-on-hover" style="flex: 1; min-width: 200px;">
+                        <label style="font-weight: bold; color:  #0e1212; border: 3px solid #000; padding: 10px;">
+                            Tổ hợp môn C
+                        </label>
+                        <ul class="submenu" style="display: none; border: 5px solid #000; padding: 10px; background-color: #e0f7fa;">
+                            {% for option in subject_combination_options if option.startswith('C') %}
+                                <label>
+                                    <input type="checkbox" id="subject-{{ loop.index }}" name="subjects" value="{{ option }}">
+                                    {{ option }}
+                                </label>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    <div class="label-item multiple custom-cursor-on-hover" style="flex: 1; min-width: 200px;">
+                        <label style="font-weight: bold; color:  #0e1212; border: 3px solid #000; padding: 10px;">
+                            Tổ hợp môn D
+                        </label>
+                        <ul class="submenu" style="display: none; border: 5px solid #000; padding: 10px; background-color: #e0f7fa;">
+                            {% for option in subject_combination_options if option.startswith('D') %}
+                                <input type="checkbox" id="subject-{{ loop.index }}" name="subjects" value="{{ option }}">
+                                {{ option }}
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    <div class="label-item multiple custom-cursor-on-hover" style="flex: 1; min-width: 200px;">
+                        <label style="font-weight: bold; color:  #0e1212; border: 3px solid #000; padding: 10px;">
+                            Tổ hợp môn N
+                        </label>
+                        <ul class="submenu" style="display: none; border: 5px solid #000; padding: 10px; background-color: #e0f7fa;">
+                            {% for option in subject_combination_options if option.startswith('N') %}
+                                <label>
+                                    <input type="checkbox" id="subject-{{ loop.index }}" name="subjects" value="{{ option }}">
+                                    {{ option }}
+                                </label>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    <div class="label-item multiple custom-cursor-on-hover" style="flex: 1; min-width: 200px;">
+                        <label style="font-weight: bold; color:  #0e1212; border: 3px solid #000; padding: 10px;">
+                            Tổ hợp môn S
+                        </label>
+                        <ul class="submenu" style="display: none; border: 5px solid #000; padding: 10px; background-color: #e0f7fa;">
+                            {% for option in subject_combination_options if option.startswith('S') %}
+                                <label>
+                                    <input type="checkbox" id="subject-{{ loop.index }}" name="subjects" value="{{ option }}">
+                                    {{ option }}
+                                </label>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <script>
+                document.querySelectorAll('.label-item').forEach(item => {
+                    item.addEventListener('mouseenter', () => {
+                        const submenu = item.querySelector('.submenu');
+                        if (submenu) {
+                            submenu.style.display = 'block';
+                        }
+                    });
+                    item.addEventListener('mouseleave', () => {
+                        const submenu = item.querySelector('.submenu');
+                        if (submenu) {
+                            submenu.style.display = 'none';
+                        }
+                    });
+                });
+            </script>
+        <script>
+            // Đảm bảo DOM được tải đầy đủ trước khi chạy script
+            document.addEventListener('DOMContentLoaded', function () {
+            // Gắn hàm vào window để có thể sử dụng với onclick
+            window.setAnswer = function (inputId, value, button) {
+            const inputElement = document.getElementById(inputId);
+            if (!inputElement) {
+            console.error(`Không tìm thấy phần tử với ID: ${inputId}`);
+            return;
+            }
+
+            inputElement.value = value;
+
+            // Đổi màu cho nút đã chọn
+            const buttons = button.parentElement.querySelectorAll('button');
+            buttons.forEach(btn => btn.classList.remove('selected'));
+            button.classList.add('selected');
+            };
+
+            window.toggleFields = function (option, inputId, button) {
+            const fieldsContainer = document.getElementById('fields-container_3');
+            const inputElement = document.getElementById(inputId);
+
+            if (!fieldsContainer || !inputElement) {
+            console.error('Không tìm thấy container hoặc input liên quan.');
+            return;
+            }
+
+            const buttons = button.parentElement.querySelectorAll('button');
+            buttons.forEach(btn => btn.classList.remove('selected'));
+            button.classList.add('selected');
+
+            if (option === 'yes') {
+            fieldsContainer.style.display = 'block';
+            inputElement.value = 'Có';
+            } else {
+            fieldsContainer.style.display = 'none';
+            inputElement.value = 'Không';
+            }
+            };
+
+            // Thay thế onclick bằng addEventListener
+            const answerButtons = document.querySelectorAll('.answer-button');
+            answerButtons.forEach(button => {
+            button.addEventListener('click', function () {
+            const inputId = button.dataset.input;
+            const value = button.dataset.value;
+            setAnswer(inputId, value, button);
+            });
+            });
+
+            const toggleFieldButtons = document.querySelectorAll('.toggle-field-button');
+            toggleFieldButtons.forEach(button => {
+            button.addEventListener('click', function () {
+            const inputId = button.dataset.input;
+            const value = button.dataset.value;
+            toggleFields(value, inputId, button);
+            });
+            });
+
+            // Xử lý khi form được gửi
+            const careerForm = document.getElementById('careerForm');
+            if (careerForm) {
+            careerForm.addEventListener('submit', function (event) {
+            event.preventDefault(); // Ngăn hành động mặc định của form
+
+            // Hiển thị thông báo xác nhận
+            if (confirm('Bạn có chắc chắn muốn gửi form không?')) {
+                // Lấy dữ liệu từ form
+                const data = {
+                family_advice: document.getElementById('family_advice')?.value || '',
+                financial_influence: document.getElementById('financial_influence')?.value || '',
+                family_industry: document.getElementById('family_industry')?.value || '',
+                family_industry_select: document.getElementById('family_industry_select')?.value || '',
+                mbti: document.getElementById('mbti')?.value || '',
+                subjects: Array.from(document.querySelectorAll('input[name="subjects"]:checked')).map(input => input.value),
+                strengths: Array.from(document.querySelectorAll('input[name="strengths"]:checked')).map(input => input.value),
+                interests: Array.from(document.querySelectorAll('input[name="interests"]:checked')).map(input => input.value)
+                };
+
+                // Gửi dữ liệu tới backend
+                fetch('/submit', {
+                method: 'POST',
+                headers: {
+                'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+                })
+                .then(response => response.json())
+                .then(responseData => {
+                console.log('Kết quả gửi form:', responseData);
+                displayResults(responseData);
+                })
+                .catch(error => {
+                console.error('Lỗi khi gửi form:', error);
+                });
+            }
+            });
+            }
+
+            // Hàm xác thực form
+            function validateForm() {
+            const mbtiSelect = document.getElementById('mbti');
+            const subjectsInputs = document.querySelectorAll('input[name="subjects"]');
+            const strengthsInputs = document.querySelectorAll('input[name="strengths"]');
+            const interestsInputs = document.querySelectorAll('input[name="interests"]');
+            const submitButton = document.getElementById('submit');
+
+            if (!mbtiSelect || !submitButton) {
+            console.error('Không tìm thấy phần tử cần thiết để xác thực.');
+            return;
+            }
+
+            const mbtiSelected = mbtiSelect.value !== '';
+            const subjectsChecked = Array.from(subjectsInputs).some(input => input.checked);
+            const strengthsChecked = Array.from(strengthsInputs).some(input => input.checked);
+            const interestsChecked = Array.from(interestsInputs).some(input => input.checked);
+
+            submitButton.disabled = !(mbtiSelected && subjectsChecked && strengthsChecked && interestsChecked);
+            }
+
+            // Lắng nghe sự kiện thay đổi để xác thực form
+            const mbtiSelect = document.getElementById('mbti');
+            const subjectsInputs = document.querySelectorAll('input[name="subjects"]');
+            const strengthsInputs = document.querySelectorAll('input[name="strengths"]');
+            const interestsInputs = document.querySelectorAll('input[name="interests"]');
+
+            if (mbtiSelect) {
+            mbtiSelect.addEventListener('change', validateForm);
+            }
+            subjectsInputs.forEach(input => input.addEventListener('change', validateForm));
+            strengthsInputs.forEach(input => input.addEventListener('change', validateForm));
+            interestsInputs.forEach(input => input.addEventListener('change', validateForm));
+            });
+            
+            // Hiển thị kết quả
+            function displayResults(data) {
+                const resultsContainer = document.getElementById('results');
+                resultsContainer.innerHTML = ''; // Xóa nội dung cũ
+
+                // Tiêu đề
+                const label = document.createElement('h3');
+                label.textContent = 'Kết Quả';
+                label.style.textAlign = 'center';
+                resultsContainer.appendChild(label);
+
+                // Tạo khung kết quả
+                const table = document.createElement('div');
+                table.style.border = '1px solid #ccc'; // ✅ Màu nhẹ hơn cho khung
+                table.style.padding = '20px'; // ✅ Padding đồng bộ với CSS mẫu
+                table.style.borderRadius = '8px'; // ✅ Góc bo tròn
+                table.style.backgroundColor = '#f9f9f9'; // ✅ Nền sáng hơn
+                table.style.width = '50%'; // ✅ Thu nhỏ chiều ngang khung
+                table.style.margin = '30px auto'; // ✅ Căn giữa với khoảng cách từ trên
+                table.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.1)'; // ✅ Thêm hiệu ứng đổ bóng
+
+                data.forEach(item => {
+                    const row = document.createElement('div');
+                    row.style.display = 'flex';
+                    row.style.width = '100%'; // ✅ Đảm bảo hàng chiếm toàn bộ chiều rộng khung
+                    row.style.justifyContent = 'space-between'; // ✅ Chia đều các cột
+                    row.style.alignItems = 'center'; // ✅ Căn giữa nội dung theo chiều dọc
+                    row.style.padding = '10px 0';
+                    row.style.borderBottom = '1px solid #ddd'; // ✅ Thêm đường gạch dưới để phân tách các hàng
+
+                    // Cột ngành nghề
+                    const careerCell = document.createElement('div');
+                    careerCell.textContent = item.career;
+                    careerCell.style.flex = '3'; // ✅ Chiếm 40% chiều rộng
+                    careerCell.style.textAlign = 'left';
+                    careerCell.style.paddingRight = '10px';
+
+                    // Cột điểm số
+                    const scoreCell = document.createElement('div');
+                    scoreCell.textContent = item.score;
+                    scoreCell.style.flex = '2'; // ✅ Chiếm 20% chiều rộng
+                    scoreCell.style.textAlign = 'center';
+
+                    // Cột danh sách trường
+                    const universitiesCell = document.createElement('div');
+                    universitiesCell.style.flex = '3'; // ✅ Chiếm 40% chiều rộng
+                    universitiesCell.style.textAlign = 'left';
+
+                    // Nút toggle xem trường
+                    const toggleButton = document.createElement('button');
+                    toggleButton.textContent = 'Xem trường';
+                    toggleButton.style.marginBottom = '5px';
+                    toggleButton.style.fontSize = '14px';
+                    toggleButton.style.cursor = 'pointer';
+                    toggleButton.style.background = '#007bff';
+                    toggleButton.style.color = '#fff';
+                    toggleButton.style.border = 'none';
+                    toggleButton.style.padding = '5px 10px';
+                    toggleButton.style.borderRadius = '4px';
+
+                    // Danh sách các trường đại học
+                    const universitiesList = document.createElement('ul');
+                    universitiesList.style.listStyleType = 'none';
+                    universitiesList.style.padding = '0';
+                    universitiesList.style.margin = '10px 0';
+                    universitiesList.style.display = 'none'; // Ẩn mặc định
+
+                    const top5Universities = item.universities.slice(0, 5);
+                    const remainingUniversities = item.universities.slice(5);
+
+                    // ✅ Hiển thị top 5 trường đầu tiên
+                    top5Universities.forEach(university => {
+                        const listItem = document.createElement('li');
+                        listItem.textContent = university.trim();
+                        universitiesList.appendChild(listItem);
+                    });
+
+                    // ✅ Danh sách các trường còn lại
+                    const remainingList = document.createElement('ul');
+                    remainingList.style.listStyleType = 'none';
+                    remainingList.style.padding = '0';
+                    remainingList.style.margin = '10px 0';
+                    remainingList.style.display = 'none';
+
+                    remainingUniversities.forEach(university => {
+                        const listItem = document.createElement('li');
+                        listItem.textContent = university.trim();
+                        remainingList.appendChild(listItem);
+                    });
+
+                    // ✅ Nút Xem thêm (ẩn mặc định)
+                    const viewMoreButton = document.createElement('button');
+                    viewMoreButton.textContent = 'Xem thêm';
+                    viewMoreButton.style.marginTop = '5px';
+                    viewMoreButton.style.fontSize = '12px';
+                    viewMoreButton.style.cursor = 'pointer';
+                    viewMoreButton.style.background = '#28a745';
+                    viewMoreButton.style.color = '#fff';
+                    viewMoreButton.style.border = 'none';
+                    viewMoreButton.style.padding = '3px 8px';
+                    viewMoreButton.style.borderRadius = '4px';
+                    viewMoreButton.style.display = 'none'; // Ẩn mặc định
+
+                    viewMoreButton.addEventListener('click', () => {
+                        if (remainingList.style.display === 'none') {
+                            remainingList.style.display = 'block';
+                            viewMoreButton.textContent = 'Thu gọn';
+                        } else {
+                            remainingList.style.display = 'none';
+                            viewMoreButton.textContent = 'Xem thêm';
+                        }
+                    });
+
+                    // ✅ Toggle ẩn/hiện danh sách chính
+                    toggleButton.addEventListener('click', () => {
+                        if (universitiesList.style.display === 'none') {
+                            universitiesList.style.display = 'block';
+                            viewMoreButton.style.display = 'block'; // Hiện nút Xem thêm sau khi mở danh sách
+                            remainingList.style.display = 'none';
+                            viewMoreButton.textContent = 'Xem thêm';
+                        } else {
+                            universitiesList.style.display = 'none';
+                            remainingList.style.display = 'none';
+                            viewMoreButton.style.display = 'none'; // Ẩn nút Xem thêm khi đóng danh sách
+                        }
+                    });
+
+                    universitiesCell.appendChild(toggleButton);
+                    universitiesCell.appendChild(universitiesList);
+                    if (remainingUniversities.length > 0) {
+                        universitiesCell.appendChild(remainingList);
+                        universitiesCell.appendChild(viewMoreButton);
+                    }
+
+                    row.appendChild(careerCell);
+                    row.appendChild(scoreCell);
+                    row.appendChild(universitiesCell);
+
+                    table.appendChild(row);
+                });
+
+                resultsContainer.appendChild(table);
+            }
+
+
+
+        </script>
+            <div style="font: size 18px; margin-top: 10px;">
+                Tổ hợp môn đã chọn:
+                <div id="selected-subjects"></div>
+            </div>
+            <script>
+                document.querySelectorAll('input[name="subjects"]').forEach(checkbox => {
+                    checkbox.addEventListener('change', () => {
+                        const selectedSubjects = Array.from(document.querySelectorAll('input[name="subjects"]:checked'))
+                            .map(input => input.value);
+                        document.getElementById('selected-subjects').innerHTML = selectedSubjects.join(', ');
+                    });
+                });
+            </script>
+            </script>
+            <!-- Checkbox Khả năng và Điểm mạnh -->
+            <h3>Khả năng và Điểm mạnh</h3>
+            <div class="checkbox-group" id="strengthsOptions">
+                {% for option in strengths_options %}
+                    <label>
+                        <input type="checkbox" id="strength-{{ loop.index }}" name="strengths" value="{{ option }}">
+                        {{ option }}
+                    </label>
+                {% endfor %}
+            </div>
+            
+            <!-- Checkbox Sở thích và Đam mê -->
+            <h3>Sở thích và Đam mê</h3>
+            <div class="checkbox-group" id="interestsOptions">
+                {% for option in interests_options %}
+                    <label>
+                        <input type="checkbox" id="interest-{{ loop.index }}" name="interests" value="{{ option }}">
+                        {{ option }}
+                    </label>
+                {% endfor %}
+            </div>
+
+            <button type="submit" id="submit">Gửi</button>
+        </form>
+    </div>
+    
+
+    
+  
+    <div id="results"></div>
+    <button id="load-more" data-page="1" style="display:none;">Xem thêm</button>
+
+    <script src="{{ url_for('static', filename='js/scripts.js') }}"></script>
+</body>
+
+</html>
