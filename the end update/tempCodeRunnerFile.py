@@ -1,1 +1,0 @@
-university_data['Top trường đại học'] = university_data['Top trường đại học'].apply(clean_data)
