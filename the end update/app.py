@@ -317,8 +317,8 @@ def home():
     interests_options = sorted(data_frontend['Sở thích và Đam mê'].dropna().unique())
     field_options = sorted(data_frontend['Lĩnh vực'].dropna().unique())
 
-    if "username" not in session:
-        return redirect(url_for("login"))
+    #if "username" not in session:
+     #   return redirect(url_for("login"))
     return render_template(
         "home.html",
         username=session["username"],

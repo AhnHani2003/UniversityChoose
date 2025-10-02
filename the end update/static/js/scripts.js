@@ -1,262 +1,323 @@
-// Đảm bảo DOM được tải đầy đủ trước khi chạy script
 document.addEventListener('DOMContentLoaded', function () {
-  // ===================== Helpers UI =====================
-  // Gắn hàm vào window để dùng qua onclick cho Câu 1 (giữ nguyên theo HTML của bạn)
-  window.setAnswer = function (inputId, value, button) {
-    const inputElement = document.getElementById(inputId);
-    if (!inputElement) {
-      console.error(`Không tìm thấy phần tử với ID: ${inputId}`);
-      return;
-    }
-    inputElement.value = value;
+    // --- State Management ---
+    let currentStep = 0;
+    const FORM_DATA_KEY = 'careerFormData'; // Khóa để lưu dữ liệu trong localStorage
 
-    // Đổi màu cho nút đã chọn
-    if (button && button.parentElement) {
-      const buttons = button.parentElement.querySelectorAll('button');
-      buttons.forEach(btn => btn.classList.remove('selected'));
-      button.classList.add('selected');
-    }
-  };
+    // --- DOM Elements ---
+    const formSteps = document.querySelectorAll('.form-step');
+    const progressSteps = document.querySelectorAll('.progress-step');
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    const form = document.getElementById('careerForm');
 
-  // option: "yes" | "no" -> ẩn/hiện lĩnh vực gia đình + lưu vào input hidden (yes/no)
-  window.toggleFields = function (option, inputId, button) {
-    const fieldsContainer = document.getElementById('fields-container_3'); // khu chọn lĩnh vực gia đình
-    const inputElement = document.getElementById(inputId);
+    // --- LƯU VÀ TẢI DỮ LIỆU FORM ---
 
-    if (!inputElement) {
-      console.error('Không tìm thấy input ẩn để lưu yes/no:', inputId);
-      return;
-    }
-
-    // đổi trạng thái nút
-    if (button && button.parentElement) {
-      const buttons = button.parentElement.querySelectorAll('button');
-      buttons.forEach(btn => btn.classList.remove('selected'));
-      button.classList.add('selected');
+    /**
+     * Thu thập tất cả dữ liệu từ form và lưu vào localStorage.
+     */
+    function saveFormData() {
+        const formData = {
+            family_advice: document.getElementById('family_advice')?.value || '',
+            financial_influence: document.getElementById('financial_influence')?.value || '',
+            family_industry: document.getElementById('family_industry')?.value || '',
+            family_industry_select: document.getElementById('family_industry_select')?.value || '',
+            mbti: document.getElementById('mbti')?.value || '',
+            subjects: Array.from(document.querySelectorAll('input[name="subjects"]:checked')).map(cb => cb.value),
+            strengths: Array.from(document.querySelectorAll('input[name="strengths"]:checked')).map(cb => cb.value),
+            interests: Array.from(document.querySelectorAll('input[name="interests"]:checked')).map(cb => cb.value),
+        };
+        localStorage.setItem(FORM_DATA_KEY, JSON.stringify(formData));
     }
 
-    // chỉ hiển thị #fields-container_3 khi toggle của family_has_industry = yes
-    if (option === 'yes') {
-      if (fieldsContainer && inputId === 'family_has_industry') fieldsContainer.style.display = 'block';
-      inputElement.value = 'yes';
-    } else {
-      if (fieldsContainer && inputId === 'family_has_industry') fieldsContainer.style.display = 'none';
-      inputElement.value = 'no';
+    /**
+     * Tải dữ liệu từ localStorage và cập nhật giao diện form.
+     */
+    function loadFormData() {
+        const savedData = localStorage.getItem(FORM_DATA_KEY);
+        if (!savedData) return;
+
+        const formData = JSON.parse(savedData);
+
+        // --- CẬP NHẬT LOGIC KHÔI PHỤC BUTTON ---
+        // Hàm trợ giúp mới, ổn định hơn để cập nhật button group
+        const updateButtonGroup = (inputId, value) => {
+            if (!value) return;
+            const input = document.getElementById(inputId);
+            if (!input) return;
+            
+            input.value = value;
+            const buttonGroup = input.closest('.form-group').querySelector('.button-group');
+            if (!buttonGroup) return;
+
+            const buttons = buttonGroup.querySelectorAll('button');
+            let buttonToSelect = null;
+
+            buttons.forEach(btn => {
+                btn.classList.remove('selected');
+                const onclickString = btn.getAttribute('onclick') || '';
+                
+                // Ưu tiên 1: Tìm chính xác giá trị trong hàm setAnswer()
+                if (onclickString.includes(`setAnswer('${inputId}', '${value}'`)) {
+                    buttonToSelect = btn;
+                }
+                // Ưu tiên 2: Tìm theo text content (dự phòng)
+                else if (!buttonToSelect && btn.textContent.trim() === value) {
+                    buttonToSelect = btn;
+                }
+            });
+
+            if (buttonToSelect) {
+                buttonToSelect.classList.add('selected');
+            }
+        };
+
+        const updateToggleGroup = (inputId, value) => {
+            if (!value) return;
+             const input = document.getElementById(inputId);
+            if (!input) return;
+            
+            input.value = value;
+            const buttonGroup = input.closest('.form-group').querySelector('.button-group');
+            if (!buttonGroup) return;
+
+            const buttons = buttonGroup.querySelectorAll('button');
+            buttons.forEach(btn => {
+                btn.classList.remove('selected');
+                 const onclickString = btn.getAttribute('onclick') || '';
+                 if (value === 'Yes' && onclickString.includes("toggleFields('yes'")){
+                     btn.classList.add('selected');
+                 } else if (value === 'No' && onclickString.includes("toggleFields('no'")){
+                     btn.classList.add('selected');
+                 }
+            });
+        }
+
+
+        // Khôi phục các lựa chọn button
+        updateButtonGroup('family_advice', formData.family_advice);
+        updateButtonGroup('financial_influence', formData.financial_influence);
+        
+        // Xử lý riêng cho 'family_industry' vì nó có ẩn/hiện
+        if (formData.family_industry) {
+            updateToggleGroup('family_industry', formData.family_industry);
+            const fieldsContainer = document.getElementById('fields-container_3');
+            if (fieldsContainer) {
+                fieldsContainer.style.display = formData.family_industry === 'Yes' ? 'block' : 'none';
+                if(formData.family_industry_select) {
+                    document.getElementById('family_industry_select').value = formData.family_industry_select;
+                }
+            }
+        }
+
+        // Khôi phục MBTI
+        if (formData.mbti) {
+            document.getElementById('mbti').value = formData.mbti;
+        }
+
+        // Khôi phục checkboxes
+        const updateCheckboxes = (name, values) => {
+            if (values && values.length > 0) {
+                values.forEach(value => {
+                    // Cần escape các ký tự đặc biệt trong value nếu có
+                    const escapedValue = value.replace(/ /g, '-').replace(/\(/g, '\\(').replace(/\)/g, '\\)');
+                    const checkbox = document.querySelector(`input[name="${name}"][value="${value}"]`);
+                    if (checkbox) {
+                        checkbox.checked = true;
+                    }
+                });
+            }
+        };
+
+        updateCheckboxes('subjects', formData.subjects);
+        updateCheckboxes('strengths', formData.strengths);
+        updateCheckboxes('interests', formData.interests);
+        
+        // Cập nhật lại phần hiển thị text các môn đã chọn
+        updateSelectedSubjectsDisplay();
     }
-  };
-
-  // Nếu bạn dùng .answer-button / .toggle-field-button qua data-attr
-  const answerButtons = document.querySelectorAll('.answer-button');
-  answerButtons.forEach(button => {
-    button.addEventListener('click', function () {
-      const inputId = button.dataset.input;
-      const value   = button.dataset.value;
-      setAnswer(inputId, value, button);
-    });
-  });
-
-  const toggleFieldButtons = document.querySelectorAll('.toggle-field-button');
-  toggleFieldButtons.forEach(button => {
-    button.addEventListener('click', function () {
-      const inputId = button.dataset.input; // 'financial_influence' hoặc 'family_has_industry'
-      const value   = button.dataset.value; // "yes" | "no"
-      toggleFields(value, inputId, button);
-    });
-  });
-
-  // ===================== Lấy dữ liệu từ UI =====================
-  function getSelectedMBTI() {
-    const el = document.getElementById('mbti');
-    return el ? el.value : '';
-  }
-  function getSelectedSubjects() {
-    return Array.from(document.querySelectorAll('input[name="subjects"]:checked')).map(i => i.value);
-  }
-  function getSelectedStrengths() {
-    return Array.from(document.querySelectorAll('input[name="strengths"]:checked')).map(i => i.value);
-  }
-  function getSelectedInterests() {
-    return Array.from(document.querySelectorAll('input[name="interests"]:checked')).map(i => i.value);
-  }
-  // nếu bạn có nhóm "chính" trong HTML thì các hàm này sẽ lấy; không có thì trả mảng rỗng
-  function getMainStrengths() {
-    return Array.from(document.querySelectorAll('input[name="mainstrengths"]:checked')).map(i => i.value);
-  }
-  function getMainInterests() {
-    return Array.from(document.querySelectorAll('input[name="maininterests"]:checked')).map(i => i.value);
-  }
-
-  // Hai input ẩn yes/no
-  function getFinancialInfluence() {
-    const el = document.getElementById('financial_influence'); // hidden
-    return el ? (el.value || 'no') : 'no';
-  }
-  function getFamilyHasIndustry() {
-    const el = document.getElementById('family_has_industry'); // hidden
-    return el ? (el.value || 'no') : 'no';
-  }
-
-  function getFamilyIndustrySelect() {
-    const el = document.getElementById('family_industry_select'); // select ngành gia đình
-    return el ? el.value : '';
-  }
-  function getFamilyAdviceDetail() {
-    // Câu 1 (Có/Có, nhưng không nhiều/Không) lưu text tiếng Việt
-    const el = document.getElementById('family_advice');
-    return el ? el.value : '';
-  }
-
-  // ===================== Validate để bật/tắt nút Lưu & Gợi ý =====================
-  function validateForm() {
-    const mbtiSelect      = document.getElementById('mbti');
-    const subjectsInputs  = document.querySelectorAll('input[name="subjects"]');
-    const strengthsInputs = document.querySelectorAll('input[name="strengths"]');
-    const interestsInputs = document.querySelectorAll('input[name="interests"]');
-    const buttonSave      = document.getElementById('save');
-
-    if (!mbtiSelect || !buttonSave) {
-      console.error('Không tìm thấy phần tử cần thiết để xác thực.');
-      return;
+    
+    // --- Logic Form Nhiều Bước ---
+    function showStep(stepIndex) {
+        formSteps.forEach(step => step.classList.remove('active'));
+        formSteps[stepIndex].classList.add('active');
+        updateProgressBar(stepIndex);
+        updateNavButtons(stepIndex);
     }
 
-    const mbtiSelected     = mbtiSelect.value !== '';
-    const subjectsChecked  = Array.from(subjectsInputs).some(input => input.checked);
-    const strengthsChecked = Array.from(strengthsInputs).some(input => input.checked);
-    const interestsChecked = Array.from(interestsInputs).some(input => input.checked);
+    function updateProgressBar(stepIndex) {
+        progressSteps.forEach((step, idx) => {
+            step.classList.toggle('active', idx <= stepIndex);
+        });
+        const progressBar = document.querySelector('.progress-bar');
+        const activeSteps = document.querySelectorAll('.progress-step.active');
+        const width = ((activeSteps.length - 1) / (progressSteps.length - 1)) * 100;
+        progressBar.style.setProperty('--progress-width', `${width}%`);
+    }
 
-    buttonSave.disabled = !(mbtiSelected && subjectsChecked && strengthsChecked && interestsChecked);
-  }
+    function updateNavButtons(stepIndex) {
+        prevBtn.style.display = stepIndex === 0 ? 'none' : 'inline-block';
+        if (stepIndex === formSteps.length - 1) {
+            nextBtn.textContent = 'Get Results';
+            validateForm();
+        } else {
+            nextBtn.textContent = 'Next';
+            nextBtn.disabled = false;
+        }
+    }
+    
+    showStep(currentStep);
 
-  // Lắng nghe sự kiện thay đổi để xác thực
-  const mbtiSelectEl       = document.getElementById('mbti');
-  const subjectsInputsAll  = document.querySelectorAll('input[name="subjects"]');
-  const strengthsInputsAll = document.querySelectorAll('input[name="strengths"]');
-  const interestsInputsAll = document.querySelectorAll('input[name="interests"]');
-
-  if (mbtiSelectEl) mbtiSelectEl.addEventListener('change', validateForm);
-  subjectsInputsAll.forEach(input  => input.addEventListener('change', validateForm));
-  strengthsInputsAll.forEach(input => input.addEventListener('change', validateForm));
-  interestsInputsAll.forEach(input => input.addEventListener('change', validateForm));
-
-  // Chạy lần đầu để set trạng thái nút
-  validateForm();
-
-  // ===================== Render kết quả Top 10 =====================
-  function displayResults(data) {
-    const resultsContainer = document.getElementById('results');
-    resultsContainer.innerHTML = ''; // clear
-
-    const label = document.createElement('h3');
-    label.textContent = 'Kết quả';
-    label.style.textAlign = 'center';
-    resultsContainer.appendChild(label);
-
-    const card = document.createElement('div');
-    card.style.border = '1px solid #ccc';
-    card.style.padding = '20px';
-    card.style.borderRadius = '8px';
-    card.style.backgroundColor = '#f9f9f9';
-    card.style.width = '50%';
-    card.style.margin = '30px auto';
-    card.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
-
-    (data || []).forEach(item => {
-      const row = document.createElement('div');
-      row.style.display = 'flex';
-      row.style.width = '100%';
-      row.style.justifyContent = 'space-between';
-      row.style.alignItems = 'center';
-      row.style.padding = '10px 0';
-      row.style.borderBottom = '1px solid #ddd';
-
-      const careerCell = document.createElement('div');
-      careerCell.textContent = item.career;
-      careerCell.style.flex = '3';
-      careerCell.style.textAlign = 'left';
-      careerCell.style.paddingRight = '10px';
-
-      const scoreCell = document.createElement('div');
-      scoreCell.textContent = item.score;
-      scoreCell.style.flex = '2';
-      scoreCell.style.textAlign = 'center';
-
-      row.appendChild(careerCell);
-      row.appendChild(scoreCell);
-      card.appendChild(row);
+    // --- Event Listeners ---
+    nextBtn.addEventListener('click', () => {
+        if (currentStep < formSteps.length - 1) {
+            currentStep++;
+            showStep(currentStep);
+        } else {
+            form.dispatchEvent(new Event('submit', { cancelable: true }));
+        }
     });
 
-    resultsContainer.appendChild(card);
-  }
+    prevBtn.addEventListener('click', () => {
+        if (currentStep > 0) {
+            currentStep--;
+            showStep(currentStep);
+        }
+    });
+    
+    form.addEventListener('change', saveFormData);
 
-  // ===================== Gọi API /save khi bấm nút =====================
-  const saveBtn = document.getElementById('save');   // <button type="button" id="save">Lưu & Gợi ý</button>
-  const msgBox  = document.getElementById('saveMsg'); // tuỳ chọn: <div id="saveMsg"></div>
-
-  async function saveAndRecommend() {
-    // payload KHÔNG gửi save_only -> backend sẽ cập nhật DB + trả Top 10
-    const payload = {
-      mbti: getSelectedMBTI(),
-      subjects: getSelectedSubjects(),
-      strengths: getSelectedStrengths(),
-      interests: getSelectedInterests(),
-      // nhóm "chính" (nếu có trong UI)
-      mainstrengths: getMainStrengths(),
-      maininterests: getMainInterests(),
-      // yes/no từ hidden
-      financial_influence: getFinancialInfluence(), // "yes" | "no"
-      family_has_industry: getFamilyHasIndustry(),  // "yes" | "no"
-      // thông tin thêm
-      family_industry_select: getFamilyIndustrySelect(),
-      family_advice: getFamilyAdviceDetail()
+    // --- Logic Accordion ---
+    const accordions = document.querySelectorAll('.accordion-header');
+    accordions.forEach(accordion => {
+        accordion.addEventListener('click', () => {
+            const content = accordion.nextElementSibling;
+            content.style.maxHeight = content.style.maxHeight ? null : content.scrollHeight + 'px';
+        });
+    });
+    
+    // --- Các hàm gốc (cho onclick nội tuyến) ---
+    window.setAnswer = function (inputId, value, button) {
+        const inputElement = document.getElementById(inputId);
+        if (!inputElement) return;
+        inputElement.value = value;
+        const buttons = button.closest('.button-group').querySelectorAll('button');
+        buttons.forEach(btn => btn.classList.remove('selected'));
+        button.classList.add('selected');
+        saveFormData();
     };
 
-    // Nếu yêu cầu bắt buộc chọn lĩnh vực khi có industry:
-    if (payload.family_has_industry === 'yes' && !payload.family_industry_select) {
-      if (msgBox) msgBox.textContent = 'Vui lòng chọn lĩnh vực của gia đình.';
-      return;
+    window.toggleFields = function (option, inputId, button) {
+        const fieldsContainer = document.getElementById('fields-container_3');
+        if (!fieldsContainer) return;
+        window.setAnswer(inputId, option === 'yes' ? 'Yes' : 'No', button);
+        fieldsContainer.style.display = option === 'yes' ? 'block' : 'none';
+    };
+
+    // --- Cập nhật hiển thị môn học đã chọn ---
+    const subjectCheckboxes = document.querySelectorAll('input[name="subjects"]');
+    const selectedSubjectsSpan = document.getElementById('selected-subjects');
+
+    function updateSelectedSubjectsDisplay() {
+         const selected = Array.from(subjectCheckboxes)
+                                .filter(i => i.checked)
+                                .map(i => i.value);
+        selectedSubjectsSpan.textContent = selected.length > 0 ? selected.join(', ') : 'None';
     }
 
-    try {
-      if (saveBtn) saveBtn.disabled = true;
-      if (msgBox) msgBox.textContent = 'Đang xử lý...';
+    subjectCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', updateSelectedSubjectsDisplay);
+    });
 
-      const res = await fetch('/save', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
+    // --- Logic Gửi Form ---
+    form.addEventListener('submit', function (event) {
+        event.preventDefault();
+        
+        if (confirm('Are you sure you want to submit your information for suggestions?')) {
+            // ... (phần còn lại của hàm gửi form giữ nguyên)
+            const allStrengths = Array.from(document.querySelectorAll('input[name="strengths"]:checked')).map(input => input.value);
+            const allInterests = Array.from(document.querySelectorAll('input[name="interests"]:checked')).map(input => input.value);
 
-      let data = null;
-      try { data = await res.json(); } catch (_) {}
+            const data = {
+                family_advice: document.getElementById('family_advice')?.value || '',
+                financial_influence: document.getElementById('financial_influence')?.value || '',
+                family_industry: document.getElementById('family_industry')?.value || '',
+                family_industry_select: document.getElementById('family_industry_select')?.value || '',
+                mbti: document.getElementById('mbti')?.value || '',
+                subjects: Array.from(document.querySelectorAll('input[name="subjects"]:checked')).map(input => input.value),
+                mainstrengths: allStrengths.slice(0, 2),
+                strengths: allStrengths,
+                maininterests: allInterests.slice(0, 2),
+                interests: allInterests,
+            };
 
-      if (!res.ok) {
-        if (msgBox) msgBox.textContent = '❌ Lỗi máy chủ' + (data?.error ? `: ${data.error}` : '');
-        console.error('Server error:', data);
-        return;
-      }
+            localStorage.removeItem(FORM_DATA_KEY);
+            form.style.display = 'none';
+            const resultsContainer = document.getElementById('results');
+            resultsContainer.innerHTML = '<div class="loading">⏳ Analyzing and generating the best suggestions for you...</div>';
 
-      // Trường hợp đúng kỳ vọng: /save trả về MẢNG kết quả top 10
-      if (Array.isArray(data)) {
-        if (msgBox) msgBox.textContent = '✅ Đã lưu hồ sơ & tạo gợi ý.';
-        displayResults(data);
-      } else if (data && data.ok) {
-        // fallback nếu backend chỉ trả "ok" (ít gặp)
-        if (msgBox) msgBox.textContent = '✅ ' + (data.message || 'Đã lưu hồ sơ.');
-      } else {
-        if (msgBox) msgBox.textContent = '❌ Phản hồi không đúng định dạng.';
-        console.warn('Unexpected response:', data);
-      }
-    } catch (e) {
-      if (msgBox) msgBox.textContent = '❌ Lỗi mạng khi lưu & gợi ý.';
-      console.error(e);
-    } finally {
-      if (saveBtn) saveBtn.disabled = false;
-      if (msgBox) setTimeout(() => (msgBox.textContent = ''), 3000);
+            fetch('/save', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            })
+            .then(response => {
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                return response.json();
+            })
+            .then(responseData => {
+                displayResults(responseData);
+            })
+            .catch(error => {
+                console.error('Error submitting form:', error);
+                resultsContainer.innerHTML = '<div class="error">❌ An error occurred during processing. Please try again.</div>';
+            });
+        }
+    });
+
+    // --- Logic Xác thực Form ---
+    function validateForm() {
+        const mbtiSelected = document.getElementById('mbti').value !== '';
+        const subjectsChecked = Array.from(document.querySelectorAll('input[name="subjects"]:checked')).length > 0;
+        const strengthsChecked = Array.from(document.querySelectorAll('input[name="strengths"]:checked')).length > 0;
+        const interestsChecked = Array.from(document.querySelectorAll('input[name="interests"]:checked')).length > 0;
+
+        nextBtn.disabled = !(mbtiSelected && subjectsChecked && strengthsChecked && interestsChecked);
     }
-  }
+    
+    form.addEventListener('change', () => {
+        if (currentStep === formSteps.length - 1) {
+            validateForm();
+        }
+    });
 
-  if (saveBtn) {
-    // Nút là type="button", không cần chặn submit form
-    saveBtn.addEventListener('click', saveAndRecommend);
-  }
+    // --- Hàm Hiển thị Kết quả ---
+    function displayResults(data) {
+        // ... (hàm này giữ nguyên)
+        const resultsContainer = document.getElementById('results');
+        resultsContainer.innerHTML = '';
+        const header = document.createElement('h2');
+        header.textContent = 'Here are the suggestions for you';
+        resultsContainer.appendChild(header);
+        if (!data || data.length === 0) {
+            const noResultMessage = document.createElement('p');
+            noResultMessage.className = 'error';
+            noResultMessage.textContent = 'Sorry, no suitable suggestions were found based on your choices.';
+            resultsContainer.appendChild(noResultMessage);
+            return;
+        }
+        const gridContainer = document.createElement('div');
+        gridContainer.className = 'results-grid';
+        resultsContainer.appendChild(gridContainer);
+        data.forEach(item => {
+            const resultCard = document.createElement('div');
+            resultCard.className = 'result-card';
+            const scoreHTML = `<div class="score-badge">${item.score}</div>`;
+            const careerHTML = `<h3>${item.career}</h3>`;
+            resultCard.innerHTML = scoreHTML + careerHTML;
+            gridContainer.appendChild(resultCard);
+        });
+    }
+
+    // --- GỌI HÀM TẢI DỮ LIỆU KHI TRANG SẴN SÀNG ---
+    loadFormData();
 });
